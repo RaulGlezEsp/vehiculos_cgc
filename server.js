@@ -184,7 +184,7 @@ app.get("/historial", async (req, res) => {
     let countQuery = "";
             query = `
                 SELECT numero_orden,tipo_vehiculo,matricula,ubicacion,indicativo,marca,modelo,fecha_revision,observaciones,operario
-                FROM ${tabla}
+                FROM registros_vehiculos
                 ${whereSQL}
                 ORDER BY fecha_revision DESC
                 LIMIT $${params.length + 1} OFFSET $${params.length + 2}
@@ -193,7 +193,7 @@ app.get("/historial", async (req, res) => {
 
         countQuery = `
             SELECT COUNT(*) AS total
-            FROM ${tabla}
+            FROM registros_vehiculos
             ${whereSQL}
         `;
     
