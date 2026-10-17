@@ -136,27 +136,26 @@ function esAdmin(req) {
 
 
 app.get("/historial", async (req, res) => {
-    let { id_maquina, tipo, fechaInicio, fechaFin, ubicacion, lote } = req.query;
+    let { matricula,tipo_vehiculo, fechaInicio, fechaFin, ubicacion} = req.query;
 
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
-    let empresa = req.query.empresa;
     if (!esAdmin(req)) empresa = req.session.empresa;
 
-    let tabla = "";
-    if (empresa === "Global") tabla = "registro_de_equipo";
-    else if (empresa === "Titsa") tabla = "registro_titsa";
-    else return res.status(400).json({ error: "Empresa no válida" });
-
+  
     let where = [];
     let params = [];
 
-    if (id_maquina && id_maquina.trim() !== "") {
-        params.push(id_maquina.trim());
-        where.push(`id_maquina = $${params.length}`);
+    if (matricula && matricula.trim() !== "") {
+        params.push(matricula.trim());
+        where.push(`matricula = $${params.length}`);
     }
+    if (tipo_vehiculo && tipo_vehiculo.trim() !== "") {
+        params.push(tipo_vehiculo.trim());
+        where.push(`tipo_vehiculo = $${params.length}`);
+    }    
 
     if (ubicacion && ubicacion.trim() !== "") {
         params.push(ubicacion.trim());
@@ -175,12 +174,6 @@ app.get("/historial", async (req, res) => {
         where.push(`fecha_revision::date <= $${params.length}`);
     }
 
-    // 🔥 FILTRO POR LOTE SOLO PARA TITSA
-    if (empresa === "Titsa" && lote && lote.trim() !== "") {
-        params.push(lote.trim());
-        where.push(`lote = $${params.length}`);
-    }
-
     if (where.length === 0) {
         return res.status(400).json({ error: "Debe indicar máquina, fecha o ubicación" });
     }
@@ -189,70 +182,21 @@ app.get("/historial", async (req, res) => {
 
     let query = "";
     let countQuery = "";
-
-    // 🔥 GLOBAL (sin lote, sin filtro oficiales)
-    if (empresa === "Global") {
-
-        if (tipo === "maquinaria") {
             query = `
-                SELECT id_maquina, maquina, ubicacion, operario, fecha_revision
+                SELECT numero_orden,tipo_vehiculo,matricula,ubicacion,indicativo,marca,modelo,fecha_revision,observaciones,operario
                 FROM ${tabla}
                 ${whereSQL}
                 ORDER BY fecha_revision DESC
                 LIMIT $${params.length + 1} OFFSET $${params.length + 2}
             `;
-        } else if (tipo === "correcciones") {
-            query = `
-                SELECT id_maquina, maquina, ubicacion, operario, fecha_revision, observaciones
-                FROM ${tabla}
-                ${whereSQL}
-                ORDER BY fecha_revision DESC
-                LIMIT $${params.length + 1} OFFSET $${params.length + 2}
-            `;
-        }
+        
 
         countQuery = `
             SELECT COUNT(*) AS total
             FROM ${tabla}
             ${whereSQL}
         `;
-
-    }
-
-    // 🔥 TITSA (oficiales)
-    else if (empresa === "Titsa") {
-
-        const filtroOficiales = `
-            AND id_maquina IN (SELECT id_maquina FROM titsa_maquinas_provisional)
-        `;
-
-        if (tipo === "maquinaria") {
-            query = `
-                SELECT id_maquina, maquina, ubicacion, operario, fecha_revision, lote
-                FROM ${tabla}
-                ${whereSQL}
-                ${filtroOficiales}
-                ORDER BY fecha_revision DESC
-                LIMIT $${params.length + 1} OFFSET $${params.length + 2}
-            `;
-        } else if (tipo === "correcciones") {
-            query = `
-                SELECT id_maquina, maquina, ubicacion, operario, fecha_revision, observaciones, lote
-                FROM ${tabla}
-                ${whereSQL}
-                ${filtroOficiales}
-                ORDER BY fecha_revision DESC
-                LIMIT $${params.length + 1} OFFSET $${params.length + 2}
-            `;
-        }
-
-        countQuery = `
-            SELECT COUNT(*) AS total
-            FROM ${tabla}
-            ${whereSQL}
-            ${filtroOficiales}
-        `;
-    }
+    
 
     try {
         const result = await pool.query(query, [...params, limit, offset]);
@@ -317,7 +261,7 @@ app.get('/api/prioridades', async (req, res) => {
 
     if (empresa === "Titsa") {
       filtroInventario = `
-        AND m.id_maquina IN (
+        AND m.matricula IN (
           SELECT id_maquina FROM titsa_maquinas_provisional
         )
       `;

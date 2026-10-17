@@ -177,29 +177,41 @@
     Operario: <strong id="operarioLabel"></strong><br><br>
 
     <div class="buscador">
-        <select id="Empresa" name="Empresa">
-            <option value="Global">Global</option>
-            <option value="Titsa">Titsa</option>
-        </select>
-
         <select id="ubicacion" name="Ubicacion"></select>
+        <label>Tipo vehiculo</label>
+        <select name="tipo_vehiculo" id="tipo_vehiculo"> </select>  
         
-        <select id="selectorMaquina" name="ID_Maquina" required></select> 
+        <label>Matricula</label>
+
+        <div style="position:relative;">
+
+          <input
+              type="text"
+              name="matricula"
+              id="matricula"
+              autocomplete="off"
+              required>
+
+          <div id="sugerenciasMatricula"
+               style="
+               border:1px solid #ccc;
+               border-radius:4px;
+               max-height:150px;
+               overflow-y:auto;
+               display:none;
+               position:absolute;
+               background:white;
+               width:100%;
+               top:100%;
+               left:0;
+               z-index:1000;">
+          </div>
+
+        </div>
         <input type="date" id="fechaInicio">
         <input type="date" id="fechaFin">
 
-        <select id="tipoBusqueda">
-            <option value="maquinaria">Registros de maquinaria</option>
-            <option value="correcciones">Medidas correctivas</option>
-        </select>
-
-        <select id="selectorLote" style="display:none;">
-          <option value="">Todos los lotes</option>
-          <option value="3">Lote 3</option>
-          <option value="4">Lote 4</option>
-        </select>
-
-        
+       
         
         <button id="btnBuscar">Buscar</button>
         <button id="btnInforme">Generar informe PDF</button>
@@ -231,27 +243,12 @@ fetch("/api/me")
 
     document.getElementById("operarioLabel").innerText = user.username;
 
-    const selEmpresa = document.getElementById("Empresa");
 
-    if (user.rol !== "admin") {
-      selEmpresa.value = user.empresa;
-      selEmpresa.disabled = true;
-    }
 
-    const empresaEfectiva = user.rol === "admin" ? selEmpresa.value : user.empresa;
-
-    mostrarSelectorLote(empresaEfectiva);
-    cargarUbicaciones(empresaEfectiva);
+    cargarUbicaciones();
   });
 
 
-// =========================
-// MOSTRAR / OCULTAR SELECTOR DE LOTE
-// =========================
-function mostrarSelectorLote(empresa) {
-    const selectorLote = document.getElementById("selectorLote");
-    selectorLote.style.display = empresa === "Titsa" ? "inline-block" : "none";
-}
 
 
 // =========================
@@ -260,16 +257,14 @@ function mostrarSelectorLote(empresa) {
 let paginaActual = 1;
 
 async function buscar(pagina = 1) {
-    const id_maquina = document.getElementById("selectorMaquina").value.trim();
-    const tipo = document.getElementById("tipoBusqueda").value;
-    const empresa = document.getElementById("Empresa").value;
+    const matricula = document.getElementById("matricula").value.trim();
     const fechaInicio = document.getElementById("fechaInicio").value;
     const fechaFin = document.getElementById("fechaFin").value;
     const ubicacion = document.getElementById("ubicacion").value;
-    const lote = document.getElementById("selectorLote").value;
+    
 
     const res = await fetch(
-        `/historial?id_maquina=${id_maquina}&empresa=${empresa}&ubicacion=${ubicacion}&tipo=${tipo}&fechaInicio=${fechaInicio}&fechaFin=${fechaFin}&lote=${lote}&page=${pagina}&limit=10`
+        `/historial?matricula=${matricula}&ubicacion=${ubicacion}&tipo_vehiculo=${tipo_vehiculo}&fechaInicio=${fechaInicio}&fechaFin=${fechaFin}&page=${pagina}&limit=10`
     );
 
     if (!res.ok) {
@@ -282,7 +277,7 @@ async function buscar(pagina = 1) {
 
     paginaActual = pagina;
 
-    mostrarTabla(json.datos, tipo);
+    mostrarTabla(json.datos);
     mostrarPaginacion(json.total, json.page, json.limit);
 }
 
@@ -315,72 +310,141 @@ function mostrarPaginacion(total, page, limit) {
 }
 
 
-// =========================
-// CARGAR UBICACIONES
-// =========================
-async function cargarUbicaciones(empresa) {
-    mostrarSelectorLote(empresa);
+    let listaMatriculas = [];
 
-    const r = await fetch(`/api/ubicaciones/${empresa}`);
-    const ubicaciones = await r.json();
+    async function cargarUbicaciones() {
+        const r = await fetch(`/api/ubicaciones/`);
+        const ubicaciones = await r.json();
 
-    const sel = document.getElementById("ubicacion");
-    sel.innerHTML = "";
+        const sel = document.getElementById("ubicacion");
+        sel.innerHTML = "";
 
-    ubicaciones.forEach(u => {
-        const opt = document.createElement("option");
-        opt.value = u.ubicacion;
-        opt.textContent = u.ubicacion;
-        sel.appendChild(opt);
-    });
+        ubicaciones.forEach(u => {
+          const opt = document.createElement("option");
+          opt.value = u.ubicacion;
+          opt.textContent = u.ubicacion;
+          sel.appendChild(opt);
+        });
 
-    if (ubicaciones.length > 0) {
-        cargarMaquinasPorUbicacion(empresa, ubicaciones[0].ubicacion);
+        // Cargar máquinas de la primera ubicación automáticamente
+        if (ubicaciones.length > 0) {
+          cargarTiposPorUbicacion( ubicaciones[0].ubicacion);
+        }
+      
     }
-}
+    const matriculaInput = document.getElementById("matricula");
 
+    const divSugMatricula = document.getElementById("sugerenciasMatricula");
 
-// =========================
-// CARGAR MÁQUINAS
-// =========================
-async function cargarMaquinasPorUbicacion(empresa, ubicacion) {
-    const r = await fetch(`/api/maquinas/${empresa}/${ubicacion}`);
-    const maquinas = await r.json();
+matriculaInput.addEventListener("input", () => {
 
-    const sel = document.getElementById("selectorMaquina");
-    sel.innerHTML = "<option value=''>Selecciona una máquina</option>";
+    const texto =
+        matriculaInput.value
+            .trim()
+            .toUpperCase();
 
-    maquinas.forEach(m => {
-        const opt = document.createElement("option");
-        opt.value = m.id_maquina;
-        opt.textContent = `${m.id_maquina} - ${m.maquina}`;
-        sel.appendChild(opt);
+    if (!texto) {
+        divSugMatricula.style.display = "none";
+        return;
+    }
+
+    const filtradas =
+      listaMatriculas
+        .filter(m =>
+            m.matricula
+              .toUpperCase()
+              .includes(texto)
+        )
+        .slice(0,20);
+
+    if (filtradas.length === 0) {
+
+        divSugMatricula.style.display = "none";
+        return;
+    }
+
+    divSugMatricula.innerHTML =
+      filtradas
+        .map(m => `
+        <div
+          class="mat-item"
+          data-value="${m.matricula}"
+          style="
+            padding:8px;
+            cursor:pointer;">
+          ${m.matricula}
+        </div>
+        `)
+        .join("");
+
+    divSugMatricula.style.display = "block";
+});
+
+    divSugMatricula.addEventListener("click", e => {
+
+        if (
+            e.target.classList.contains("mat-item")
+        ) {
+
+            matriculaInput.value =
+                e.target.dataset.value;
+
+            divSugMatricula.style.display =
+                "none";
+
+            matriculaInput.dispatchEvent(
+                new Event("blur")
+            );
+        }
     });
-}
+
+    async function cargarTiposPorUbicacion(ubicacion) {
+        const r = await fetch(`/api/tipos/${ubicacion}`);
+        const tipos = await r.json();
+
+        const sel = document.getElementById("tipo_vehiculo");
+        sel.innerHTML = "";
+
+        tipos.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.tipo_vehiculo;
+          opt.textContent = `${m.tipo_vehiculo}`;
+          //opt.textContent = `${m.matricula} - ${m.tipo_vehiculo}`;
+          sel.appendChild(opt);
+        });
+
+        if (tipos.length > 0) {
+          cargarMatriculasPorTipo( tipos[0].tipo_vehiculo);
+        }  
+    }
+
+    async function cargarMatriculasPorTipo(tipo_vehiculo) {
+
+        const r =
+            await fetch(`/api/matriculas/${tipo_vehiculo}`);
+
+        listaMatriculas =
+            await r.json();
+    }
+
+    document.getElementById("ubicacion").addEventListener("change", () => {
+        const ubicacion = document.getElementById("ubicacion").value;
+        cargarTiposPorUbicacion(ubicacion);
+    });
+
+    document.getElementById("tipo_vehiculo").addEventListener("change", () => {
+        const tipo_vehiculo = document.getElementById("tipo_vehiculo").value;
+        cargarMatriculasPorTipo(tipo_vehiculo);
+    });    
 
 
-// =========================
-// EVENTOS
-// =========================
-document.getElementById("ubicacion").addEventListener("change", () => {
-    const empresa = document.getElementById("Empresa").value;
-    const ubicacion = document.getElementById("ubicacion").value;
-    cargarMaquinasPorUbicacion(empresa, ubicacion);
-});
-
-document.getElementById("Empresa").addEventListener("change", function () {
-    const empresa = this.value;
-    mostrarSelectorLote(empresa);
-    cargarUbicaciones(empresa);
-});
 
 
 // =========================
 // MOSTRAR TABLA
 // =========================
-function mostrarTabla(datos, tipo) {
+function mostrarTabla(datos) {
     const contenedor = document.getElementById("resultados");
-    const empresa = document.getElementById("Empresa").value;
 
     if (datos.length === 0) {
         contenedor.innerHTML = "<p>No hay registros para esta unidad.</p>";
@@ -388,14 +452,9 @@ function mostrarTabla(datos, tipo) {
     }
 
     // 🔥 Columnas base
-    let columnas = tipo === "maquinaria"
-        ? ["id_maquina","maquina","ubicacion", "fecha_revision", "operario"]
-        : ["id_maquina","maquina","ubicacion", "fecha_revision", "observaciones","operario"];
+    let columnas = ["numero_orden","tipo_vehiculo","matricula","ubicacion","indicativo","marca","modelo","fecha_revision", "observaciones","operario"];
 
-    // 🔥 Añadir lote SOLO si empresa = Titsa
-    if (empresa === "Titsa") {
-        columnas.push("lote");
-    }
+  
 
     let html = "<table><tr>";
 
@@ -424,23 +483,21 @@ function mostrarTabla(datos, tipo) {
 // GENERAR PDF
 // =========================
 document.getElementById("btnInforme").addEventListener("click", async () => {
-    const empresa = document.getElementById("Empresa").value;
     const fechaInicio = document.getElementById("fechaInicio").value;
     const fechaFin = document.getElementById("fechaFin").value;
     const ubicacion = document.getElementById("ubicacion").value;
-    const lote = document.getElementById("selectorLote").value;
-    const id_maquina = document.getElementById("selectorMaquina").value;
+    const tipo_vehiculo = document.getElementById("tipo_vehiculo").value;
+    const matricula = document.getElementById("matricula").value;
 
     const res = await fetch("/api/pdfHistorial", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            empresa,
             fechaInicio,
             fechaFin,
+            tipo_vehiculo,
             ubicacion,
-            lote,
-            id_maquina   // 🔥 NUEVO
+            matricula   // 🔥 NUEVO
         })
     });
 
@@ -455,7 +512,7 @@ document.getElementById("btnInforme").addEventListener("click", async () => {
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Historial_${empresa}_${fechaInicio}_a_${fechaFin}.pdf`;
+    a.download = `Historial_Vehiculos_${fechaInicio}_a_${fechaFin}.pdf`;
     document.body.appendChild(a);
     a.click();
     a.remove();
