@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prioridades</title>
+
+  <style>
+    body { font-family: Arial; max-width: 900px; margin: 20px auto; padding: 10px; }
+    h1 { text-align: center; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .card {
+      padding: 12px;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+
+    .p1 { background: #d32f2f; }
+    .p2 { background: #f9a825; color: black; }
+    .p3 { background: #388e3c; }
+
+    .card small {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    button {
+      width: 100%;
+      max-width: 300px;
+      padding: 10px;
+      margin-top: 20px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background: #45a049; }
+
+    .itemLinea {
+      display: flex;
+      gap: 20px;
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+      align-items: center;
+      font-size: 15px;
+    }
+
+    /* Colores por prioridad */
+    .itemLinea.p1 {
+      background-color: #ffcccc; /* rojo suave */
+      border-left: 6px solid #ff0000;
+    }
+
+    .itemLinea.p2 {
+      background-color: #fff2cc; /* amarillo suave */
+      border-left: 6px solid #ffcc00;
+    }
+
+    .itemLinea.p3 {
+      background-color: #d9ead3; /* verde suave */
+      border-left: 6px solid #00b050;
+    }
+
+    /* Ajustes de columnas */
+    .itemLinea span {
+      flex: 1;
+    }
+
+    .itemLinea .id {
+      font-weight: bold;
+      width: 120px;
+    }
+
+    .itemLinea .prio {
+      font-weight: bold;
+      width: 80px;
+    }
+
+  </style>
+</head>
+
+<body>
+  <h1>Prioridad de revisión</h1>
+  <select id="Empresa">
+        <option value="Global">Global</option>
+        <option value="Titsa">Titsa</option>
+   </select>
+
+  <select id="Ubicacion">
+    <option value="">Todas las ubicaciones</option>
+  </select>
+
+  <!--div id="grid" class="grid"></div-->
+  <div id="listaPrioridad"></div>
+
+
+  <button onclick="location.href='/formulario.html'">Añadir registros</button>
+  <button type="button" onclick="location.href='/subida_informes.html'">Enviar informes del día</button>
+  <button onclick="location.href='/historial.html'">Comprobar historial</button>
+
+  <script>
+  fetch("/api/me")
+  .then(r => {
+    if (!r.ok) {
+      location.href = "/index.html";
+      return;
+    }
+    return r.json();
+  })
+  .then(user => {
+    if (!user || !user.username) {
+      location.href = "/index.html";
+      return;
+    }
+
+    //document.getElementById("operarioLabel").innerText = user.username;
+
+    const selEmpresa =
+      document.querySelector('select[name="Empresa"]') ||
+      document.getElementById("Empresa");
+
+    if (selEmpresa) {
+      if (user.rol !== "admin") {
+        selEmpresa.value = user.empresa;
+        selEmpresa.disabled = true;
+      }
+    }
+
+    const empresaEfectiva = user.rol === "admin"
+      ? selEmpresa?.value
+      : user.empresa;
+
+    cargarUbicaciones(empresaEfectiva);
+
+    if (empresaEfectiva && typeof cargarMaquinas === "function") {
+      cargarMaquinas(empresaEfectiva);
+      
+    }
+    
+  });
+
+
+
+    document.getElementById("Empresa").addEventListener("change", () => {
+      const empresa = document.getElementById("Empresa").value;
+      cargarUbicaciones(empresa);
+      cargar();
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      cargar();
+    });
+    
+    async function cargarUbicaciones(empresa) {
+      const r = await fetch(`/api/ubicaciones/${empresa}`);
+      const ubicaciones = await r.json();
+
+      const sel = document.getElementById("Ubicacion");
+      sel.innerHTML = `<option value="">Todas las ubicaciones</option>`;
+
+      ubicaciones.forEach(u => {
+        sel.innerHTML += `<option value="${u.ubicacion}">${u.ubicacion}</option>`;
+      });
+    }
+
+document.getElementById("Ubicacion").addEventListener("change", cargar);
+
+
+  async function cargar() {
+    const empresa = document.getElementById("Empresa").value;
+    const ubicacion = document.getElementById("Ubicacion").value;
+
+    const res = await fetch(`/api/prioridades?empresa=${empresa}&ubicacion=${encodeURIComponent(ubicacion)}`);
+    const data = await res.json();
+
+    console.log("Respuesta backend:", data);
+
+    // Soportar ambos formatos:
+    // 1) Array directo
+    // 2) { datos: [...] }
+    const rows = Array.isArray(data) ? data : (data.datos || []);
+
+    const cont = document.getElementById('listaPrioridad');
+    cont.innerHTML = '';
+
+    if (rows.length === 0) {
+      cont.innerHTML = "<p>No hay resultados para ese filtrado.</p>";
+      return;
+    }
+
+    rows.forEach(r => {
+      const div = document.createElement("div");
+      div.className = "itemLinea";
+
+      // Añadir clase según prioridad
+      if (r.prioridad === 1 || r.prioridad === "1") div.classList.add("p1");
+      if (r.prioridad === 2 || r.prioridad === "2") div.classList.add("p2");
+      if (r.prioridad === 3 || r.prioridad === "3") div.classList.add("p3");
+
+      div.innerHTML = `
+        <span class="id">${r.id_maquina}</span>
+        <span class="nombre">${r.maquina}</span>
+        <span class="ubi">${r.ubicacion}</span>
+        <span class="prio">P${r.prioridad}</span>
+        <span class="rev">Última: ${r.ultima_revision || "—"}</span>
+      `;
+      cont.appendChild(div);
+  });
+
+  }
+
+
+     
+    
+
+
+    cargar();
+  </script>
+</body>
+</html>

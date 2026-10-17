@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Historial de Informes</title>
+<style>
+        body { font-family: Arial; max-width: 700px; margin: 20px auto; }
+        label { font-weight: bold; display: block; margin-top: 10px; }
+        input, textarea, select {
+            width: 100%; padding: 8px; margin-top: 5px;
+            border: 1px solid #ccc; border-radius: 4px;
+        }
+        button {
+            margin-top: 20px; padding: 10px 20px;
+            background: #4CAF50; color: white;
+            border: none; border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #45a049; }
+        form {
+            max-width: 600px;
+            margin: auto;
+            padding: 15px;
+        }
+
+        form label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+
+        form input,
+        form select,
+        form textarea {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+            margin-top: 4px;
+        }
+
+        form button {
+            margin-top: 20px;
+            padding: 12px;
+            font-size: 16px;
+            width: 100%;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        form button:hover {
+            background-color: #45a049;
+        }
+
+        /* Responsive ajustes si hicieras columnas en el futuro */
+        @media (max-width: 600px) {
+            form {
+                padding: 10px;
+            }
+        }
+
+    </style>
+</style>
+</head>
+
+<body>
+
+<h2>Historial de Informes</h2>
+Operario: <strong id="operarioLabel"></strong>
+<br><br>
+
+<div class="filtros">
+  <label>Empresa:</label>
+  <select id="empresa">
+    <option value="Titsa">Titsa</option>
+    <option value="Global">Global</option>
+  </select>
+
+  <label>Ubicación *</label>
+  <select id="ubicacion" name="Ubicacion"></select>
+
+  <label>ID Máquina:</label>
+  <!--input type="text" id="id_maquina" placeholder="Ej: 1501"-->
+  <select id="selectorMaquina" name="ID_Maquina" required></select>
+
+  <label>Fecha inicio:</label>
+  <input type="date" id="fechaInicio">
+
+  <label>Fecha fin:</label>
+  <input type="date" id="fechaFin">
+
+  <label>Tipo:</label>
+  <select id="tipo">
+    <option value="">-- Todos --</option>
+    <option value="mantenimiento rutinario">Mantenimiento rutinario</option>
+    <option value="mantenimiento correctivo">Mantenimiento correctivo</option>
+    <option value="solicitud averia">Solicitud de avería</option>
+  </select>
+
+  <button id="btnBuscar">Buscar</button>
+  <button onclick="location.href='/formulario.html'">Volver</button>
+</div>
+
+<div id="resultados"></div>
+
+<script>
+// LOGIN
+fetch("/api/me")
+  .then(r => r.ok ? r.json() : location.href="/index.html")
+  .then(user => {
+    if (!user || !user.username) location.href="/index.html";
+    document.getElementById("operarioLabel").innerText = user.username;
+  });
+
+// BUSCAR INFORMES
+async function buscarInformes() {
+  const empresa = document.getElementById("empresa").value;
+  const id_maquina = document.getElementById("selectorMaquina").value.trim();
+  const fechaInicio = document.getElementById("fechaInicio").value;
+  const fechaFin = document.getElementById("fechaFin").value;
+  const tipo = document.getElementById("tipo").value;
+
+  const params = new URLSearchParams();
+  params.append("empresa", empresa);
+  if (id_maquina) params.append("id_maquina", id_maquina);
+  if (fechaInicio) params.append("fechaInicio", fechaInicio);
+  if (fechaFin) params.append("fechaFin", fechaFin);
+  if (tipo) params.append("tipo", tipo);
+
+  const res = await fetch(`/api/informes?${params.toString()}`);
+  if (!res.ok) {
+    document.getElementById("resultados").innerHTML = "<p>Error cargando informes</p>";
+    return;
+  }
+
+  const datos = await res.json();
+  mostrarTabla(datos, empresa);
+}
+
+document.getElementById("btnBuscar").addEventListener("click", buscarInformes);
+
+// MOSTRAR TABLA
+function mostrarTabla(datos, empresa) {
+  if (datos.length === 0) {
+    document.getElementById("resultados").innerHTML = "<p>No hay informes para los filtros seleccionados.</p>";
+    return;
+  }
+
+  let html = "<table><tr>";
+  html += "<th>ID</th><th>ID Máquina</th><th>Empresa</th><th>Fecha</th><th>Tipo</th><th>Descargar</th>";
+  html += "</tr>";
+
+  datos.forEach(row => {
+    html += "<tr>";
+    html += `<td>${row.id}</td>`;
+    html += `<td>${row.id_maquina}</td>`;
+    html += `<td>${row.empresa}</td>`;
+    html += `<td>${row.fecha.slice(0,10)}</td>`;
+    html += `<td>${row.tipo}</td>`;
+    html += `<td><button onclick="descargar('${empresa}', ${row.id})">Descargar</button></td>`;
+    html += "</tr>";
+  });
+
+  html += "</table>";
+  document.getElementById("resultados").innerHTML = html;
+}
+
+  document.addEventListener("DOMContentLoaded", () => {
+      const empresa = document.getElementById("empresa").value;
+      if (empresa) {
+          //cargarMaquinas(empresa);
+          cargarUbicaciones(empresa);
+      }
+  });
+
+async function cargarUbicaciones(empresa) {
+    const r = await fetch(`/api/ubicaciones/${empresa}`);
+    const ubicaciones = await r.json();
+
+    const sel = document.getElementById("ubicacion");
+    sel.innerHTML = "";
+
+    ubicaciones.forEach(u => {
+      const opt = document.createElement("option");
+      opt.value = u.ubicacion;
+      opt.textContent = u.ubicacion;
+      sel.appendChild(opt);
+    });
+
+    // Cargar máquinas de la primera ubicación automáticamente
+    if (ubicaciones.length > 0) {
+      cargarMaquinasPorUbicacion(empresa, ubicaciones[0].ubicacion);
+    }
+}
+
+async function cargarMaquinasPorUbicacion(empresa, ubicacion) {
+    const r = await fetch(`/api/todasmaquinas/${empresa}/${ubicacion}`);
+    const maquinas = await r.json();
+
+    const sel = document.getElementById("selectorMaquina");
+    sel.innerHTML = "";
+
+    maquinas.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.id_maquina;
+      opt.textContent = `${m.id_maquina} - ${m.maquina}`;
+      sel.appendChild(opt);
+    });
+}
+
+document.getElementById("ubicacion").addEventListener("change", () => {
+    const empresa = document.getElementById("empresa").value;
+    const ubicacion = document.getElementById("ubicacion").value;
+    cargarMaquinasPorUbicacion(empresa, ubicacion);
+});
+
+document.getElementById("empresa").addEventListener("change", function () {
+    const empresa = this.value;
+    //cargarMaquinas(empresa);
+    cargarUbicaciones(empresa);
+});
+
+// DESCARGAR INFORME
+function descargar(empresa, id) {
+  window.location.href = `/api/informe/${empresa}/${id}`;
+}
+</script>
+
+</body>
+</html>

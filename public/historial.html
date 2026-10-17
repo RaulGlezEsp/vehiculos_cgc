@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Historiales</title>
+
+  <style>
+    body { font-family: Arial; max-width: 900px; margin: 20px auto; padding: 10px; }
+    h1 { text-align: center; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .card {
+      padding: 12px;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+
+    .p1 { background: #d32f2f; }
+    .p2 { background: #f9a825; color: black; }
+    .p3 { background: #388e3c; }
+
+    .card small {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    /* Contenedor general del buscador */
+    .buscador {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    /* Input de unidad */
+    .buscador input[type="text"] {
+      padding: 10px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+      width: 200px;
+      transition: 0.2s;
+    }
+
+    .buscador input[type="text"]:focus {
+      border-color: #4CAF50;
+      box-shadow: 0 0 4px rgba(76,175,80,0.4);
+      outline: none;
+    } 
+    
+    .buscador input {
+      padding: 10px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+      width: 220px;
+      transition: 0.2s;
+    }
+
+    /* Selector */
+    .buscador select {
+      padding: 10px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+      width: 220px;
+      transition: 0.2s;
+    }
+
+    .buscador select:focus {
+      border-color: #4CAF50;
+      box-shadow: 0 0 4px rgba(76,175,80,0.4);
+      outline: none;
+    }
+
+    /* Botón */
+    .buscador button {
+      padding: 0px 20px;
+      height: 42px; 
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      align-items: center;
+      margin-top: 0px;
+    }
+
+    .buscador button:hover {
+      background: #45a049;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .buscador {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    
+      .buscador input,
+      .buscador select,
+      .buscador button {
+        width: 100%;
+      }
+    }
+
+    button {
+      width: 100%;
+      max-width: 300px;
+      padding: 10px;
+      margin-top: 20px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background: #45a049; }
+
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      background: white;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    table th {
+      background: #4CAF50;
+      color: white;
+      padding: 10px;
+      text-align: left;
+      font-weight: bold;
+    }
+
+    table td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      white-space: pre-wrap;
+    }
+
+    
+
+    table tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+
+    table tr:hover {
+      background: #f1f1f1;
+    }
+
+
+  </style>
+</head>
+
+<body>
+    Operario: <strong id="operarioLabel"></strong><br><br>
+
+    <div class="buscador">
+        <select id="Empresa" name="Empresa">
+            <option value="Global">Global</option>
+            <option value="Titsa">Titsa</option>
+        </select>
+
+        <select id="ubicacion" name="Ubicacion"></select>
+        
+        <select id="selectorMaquina" name="ID_Maquina" required></select> 
+        <input type="date" id="fechaInicio">
+        <input type="date" id="fechaFin">
+
+        <select id="tipoBusqueda">
+            <option value="maquinaria">Registros de maquinaria</option>
+            <option value="correcciones">Medidas correctivas</option>
+        </select>
+
+        <select id="selectorLote" style="display:none;">
+          <option value="">Todos los lotes</option>
+          <option value="3">Lote 3</option>
+          <option value="4">Lote 4</option>
+        </select>
+
+        
+        
+        <button id="btnBuscar">Buscar</button>
+        <button id="btnInforme">Generar informe PDF</button>
+
+    </div>
+
+    <div id="resultados"></div>
+    <button onclick="location.href='/formulario.html'">Añadir registros</button>
+    <button onclick="location.href='/subida_informes.html'">Enviar informes del día</button>
+
+<script>
+  
+// =========================
+// CARGA DE USUARIO
+// =========================
+fetch("/api/me")
+  .then(r => {
+    if (!r.ok) {
+      location.href = "/index.html";
+      return;
+    }
+    return r.json();
+  })
+  .then(user => {
+    if (!user || !user.username) {
+      location.href = "/index.html";
+      return;
+    }
+
+    document.getElementById("operarioLabel").innerText = user.username;
+
+    const selEmpresa = document.getElementById("Empresa");
+
+    if (user.rol !== "admin") {
+      selEmpresa.value = user.empresa;
+      selEmpresa.disabled = true;
+    }
+
+    const empresaEfectiva = user.rol === "admin" ? selEmpresa.value : user.empresa;
+
+    mostrarSelectorLote(empresaEfectiva);
+    cargarUbicaciones(empresaEfectiva);
+  });
+
+
+// =========================
+// MOSTRAR / OCULTAR SELECTOR DE LOTE
+// =========================
+function mostrarSelectorLote(empresa) {
+    const selectorLote = document.getElementById("selectorLote");
+    selectorLote.style.display = empresa === "Titsa" ? "inline-block" : "none";
+}
+
+
+// =========================
+// BUSCAR
+// =========================
+let paginaActual = 1;
+
+async function buscar(pagina = 1) {
+    const id_maquina = document.getElementById("selectorMaquina").value.trim();
+    const tipo = document.getElementById("tipoBusqueda").value;
+    const empresa = document.getElementById("Empresa").value;
+    const fechaInicio = document.getElementById("fechaInicio").value;
+    const fechaFin = document.getElementById("fechaFin").value;
+    const ubicacion = document.getElementById("ubicacion").value;
+    const lote = document.getElementById("selectorLote").value;
+
+    const res = await fetch(
+        `/historial?id_maquina=${id_maquina}&empresa=${empresa}&ubicacion=${ubicacion}&tipo=${tipo}&fechaInicio=${fechaInicio}&fechaFin=${fechaFin}&lote=${lote}&page=${pagina}&limit=10`
+    );
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || "Error en la búsqueda");
+      return;
+    }
+
+    const json = await res.json();
+
+    paginaActual = pagina;
+
+    mostrarTabla(json.datos, tipo);
+    mostrarPaginacion(json.total, json.page, json.limit);
+}
+
+document.getElementById("btnBuscar").addEventListener("click", () => buscar(1));
+
+
+// =========================
+// PAGINACIÓN
+// =========================
+function mostrarPaginacion(total, page, limit) {
+    const contenedor = document.getElementById("resultados");
+
+    const totalPaginas = Math.ceil(total / limit);
+
+    let html = "<div class='paginacion'>";
+
+    if (page > 1) {
+        html += `<button onclick="buscar(${page - 1})">Anterior</button>`;
+    }
+
+    html += `<span>Página ${page} de ${totalPaginas}</span>`;
+
+    if (page < totalPaginas) {
+        html += `<button onclick="buscar(${page + 1})">Siguiente</button>`;
+    }
+
+    html += "</div>";
+
+    contenedor.innerHTML += html;
+}
+
+
+// =========================
+// CARGAR UBICACIONES
+// =========================
+async function cargarUbicaciones(empresa) {
+    mostrarSelectorLote(empresa);
+
+    const r = await fetch(`/api/ubicaciones/${empresa}`);
+    const ubicaciones = await r.json();
+
+    const sel = document.getElementById("ubicacion");
+    sel.innerHTML = "";
+
+    ubicaciones.forEach(u => {
+        const opt = document.createElement("option");
+        opt.value = u.ubicacion;
+        opt.textContent = u.ubicacion;
+        sel.appendChild(opt);
+    });
+
+    if (ubicaciones.length > 0) {
+        cargarMaquinasPorUbicacion(empresa, ubicaciones[0].ubicacion);
+    }
+}
+
+
+// =========================
+// CARGAR MÁQUINAS
+// =========================
+async function cargarMaquinasPorUbicacion(empresa, ubicacion) {
+    const r = await fetch(`/api/maquinas/${empresa}/${ubicacion}`);
+    const maquinas = await r.json();
+
+    const sel = document.getElementById("selectorMaquina");
+    sel.innerHTML = "<option value=''>Selecciona una máquina</option>";
+
+    maquinas.forEach(m => {
+        const opt = document.createElement("option");
+        opt.value = m.id_maquina;
+        opt.textContent = `${m.id_maquina} - ${m.maquina}`;
+        sel.appendChild(opt);
+    });
+}
+
+
+// =========================
+// EVENTOS
+// =========================
+document.getElementById("ubicacion").addEventListener("change", () => {
+    const empresa = document.getElementById("Empresa").value;
+    const ubicacion = document.getElementById("ubicacion").value;
+    cargarMaquinasPorUbicacion(empresa, ubicacion);
+});
+
+document.getElementById("Empresa").addEventListener("change", function () {
+    const empresa = this.value;
+    mostrarSelectorLote(empresa);
+    cargarUbicaciones(empresa);
+});
+
+
+// =========================
+// MOSTRAR TABLA
+// =========================
+function mostrarTabla(datos, tipo) {
+    const contenedor = document.getElementById("resultados");
+    const empresa = document.getElementById("Empresa").value;
+
+    if (datos.length === 0) {
+        contenedor.innerHTML = "<p>No hay registros para esta unidad.</p>";
+        return;
+    }
+
+    // 🔥 Columnas base
+    let columnas = tipo === "maquinaria"
+        ? ["id_maquina","maquina","ubicacion", "fecha_revision", "operario"]
+        : ["id_maquina","maquina","ubicacion", "fecha_revision", "observaciones","operario"];
+
+    // 🔥 Añadir lote SOLO si empresa = Titsa
+    if (empresa === "Titsa") {
+        columnas.push("lote");
+    }
+
+    let html = "<table><tr>";
+
+    columnas.forEach(col => html += `<th>${col.toUpperCase()}</th>`);
+    html += "</tr>";
+
+    datos.forEach(row => {
+        html += "<tr>";
+
+        columnas.forEach(col => {
+            let valor = row[col] || "";
+            if (col === "fecha_revision" && valor) valor = valor.slice(0, 10);
+            html += `<td>${valor}</td>`;
+        });
+
+        html += "</tr>";
+    });
+
+    html += "</table>";
+
+    contenedor.innerHTML = html;
+}
+
+
+// =========================
+// GENERAR PDF
+// =========================
+document.getElementById("btnInforme").addEventListener("click", async () => {
+    const empresa = document.getElementById("Empresa").value;
+    const fechaInicio = document.getElementById("fechaInicio").value;
+    const fechaFin = document.getElementById("fechaFin").value;
+    const ubicacion = document.getElementById("ubicacion").value;
+    const lote = document.getElementById("selectorLote").value;
+    const id_maquina = document.getElementById("selectorMaquina").value;
+
+    const res = await fetch("/api/pdfHistorial", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            empresa,
+            fechaInicio,
+            fechaFin,
+            ubicacion,
+            lote,
+            id_maquina   // 🔥 NUEVO
+        })
+    });
+
+
+    if (!res.ok) {
+        alert("Error generando PDF");
+        return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Historial_${empresa}_${fechaInicio}_a_${fechaFin}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+});
+
+</script>
+
+</body>
+</html>

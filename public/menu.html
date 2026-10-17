@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Menú Principal</title>
+  <link rel="stylesheet" href="menu.css">
+  <style>
+    body {
+  font-family: Arial;
+  max-width: 900px;
+  margin: 40px auto;
+  text-align: center;
+}
+
+h1 {
+  margin-bottom: 20px;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 columnas fijas */
+  gap: 20px;
+  max-width: 600px;
+  margin: 40px auto;
+}
+
+
+.menu-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 30px 20px;
+  font-size: 20px;
+  font-weight: bold;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+}
+
+.menu-btn:hover {
+  background: #4CAF50;
+  transform: scale(1.03);
+}
+
+  </style>
+</head>
+
+<body>
+
+  <h1>Menú Principal</h1>
+  <p>Operario: <strong id="operarioLabel"></strong></p>
+
+  <div class="menu-grid">
+
+    <button class="menu-btn" onclick="location.href='/formulario.html'">
+      Registro de maquinaria
+    </button>
+
+    <button class="menu-btn" onclick="location.href='/partes.html'">
+      Partes de mantenimiento
+    </button>
+
+    <button class="menu-btn" onclick="location.href='/inventario.html'">
+      Inventario
+    </button>
+
+    <button class="menu-btn" onclick="location.href='/averias.html'">
+      Solicitud de avería
+    </button>
+
+    <button class="menu-btn" onclick="location.href='/checklists.html'">
+      Checklists de maquinaria
+    </button>
+
+    <button class="menu-btn" onclick="location.href='/extras.html'">
+      Extras
+    </button>
+
+    <button class="menu-btn" onclick="location.href='/descargarinformes.html'">
+      Informes
+    </button>
+
+  </div>
+
+<script>
+    fetch("/api/me")
+  .then(r => {
+    if (!r.ok) {
+      location.href = "/index.html";
+      return;
+    }
+    return r.json();
+  })
+  .then(user => {
+    if (!user || !user.username) {
+      location.href = "/index.html";
+      return;
+    }
+
+    document.getElementById("operarioLabel").innerText = user.username;
+  });
+
+</script>
+</body>
+</html>
