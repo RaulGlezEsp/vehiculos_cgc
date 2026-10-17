@@ -959,7 +959,7 @@ app.post("/api/pdf", requireLogin, upload.array("Adjuntos", 10), async (req, res
     // -----------------------------
     y = addFlexibleRow(y, [
       { label: "Numero Orden", value: data.numero_orden, span: 4 },
-      { label: "Tipo vehiculo", value: data.tipo_vehiculo, span: 6 },
+      { label: "Tipo vehiculo", value: data.tipo_vehiculo, span: 5 },
       { label: "Matricula", value: data.matricula, span: 2 },
     ]);
 
@@ -1095,7 +1095,7 @@ app.post("/api/pdf", requireLogin, upload.array("Adjuntos", 10), async (req, res
 
       await pool.query(
         `INSERT INTO informes_vehiculos_cgc (matricula, fecha, informe, tipo)
-         VALUES ($1, $2, CURRENT_DATE, $3, $4)`,
+         VALUES ($1, $2, CURRENT_DATE, $3)`,
         [
           data.matricula,
           Buffer.from(finalPdf),
