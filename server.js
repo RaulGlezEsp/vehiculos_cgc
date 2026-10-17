@@ -1095,7 +1095,7 @@ app.post("/api/pdf", requireLogin, upload.array("Adjuntos", 10), async (req, res
 
       await pool.query(
         `INSERT INTO informes_vehiculos_cgc (matricula, fecha, informe, tipo)
-         VALUES ($1, CURRENT_DATE $2, $3)`,
+         VALUES ($1, CURRENT_DATE, $2, $3)`,
         [
           data.matricula,
           Buffer.from(finalPdf),
