@@ -244,14 +244,14 @@ matriculaInput.addEventListener("input", () => {
 
         tipos.forEach(m => {
           const opt = document.createElement("option");
-          opt.value = m.matricula;
+          opt.value = m.tipo_vehiculo;
           opt.textContent = `${m.tipo_vehiculo}`;
           //opt.textContent = `${m.matricula} - ${m.tipo_vehiculo}`;
           sel.appendChild(opt);
         });
 
         if (tipos.length > 0) {
-          cargarMatriculasPorTipo( tipos[0].ubicacion);
+          cargarMatriculasPorTipo( tipos[0].tipo_vehiculo);
         }  
     }
 

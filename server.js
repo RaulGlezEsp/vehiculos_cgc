@@ -958,8 +958,8 @@ app.post("/api/pdf", requireLogin, upload.array("Adjuntos", 10), async (req, res
     // 4) TABLA SUPERIOR (MAQUINARIA)
     // -----------------------------
     y = addFlexibleRow(y, [
-      { label: "Numero Orden", value: data.numero_orden, span: 2 },
-      { label: "Tipo vehiculo", value: data.tipo_vehiculo, span: 8 },
+      { label: "Numero Orden", value: data.numero_orden, span: 4 },
+      { label: "Tipo vehiculo", value: data.tipo_vehiculo, span: 6 },
       { label: "Matricula", value: data.matricula, span: 4 },
     ]);
 
