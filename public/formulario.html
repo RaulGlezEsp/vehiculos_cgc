@@ -169,6 +169,53 @@
         }
       
     }
+    const matriculaInput = document.getElementById("matricula");
+
+    const divSugMatricula = document.getElementById("sugerenciasMatricula");
+
+matriculaInput.addEventListener("input", () => {
+
+    const texto =
+        matriculaInput.value
+            .trim()
+            .toUpperCase();
+
+    if (!texto) {
+        divSugMatricula.style.display = "none";
+        return;
+    }
+
+    const filtradas =
+      listaMatriculas
+        .filter(m =>
+            m.matricula
+              .toUpperCase()
+              .includes(texto)
+        )
+        .slice(0,20);
+
+    if (filtradas.length === 0) {
+
+        divSugMatricula.style.display = "none";
+        return;
+    }
+
+    divSugMatricula.innerHTML =
+      filtradas
+        .map(m => `
+        <div
+          class="mat-item"
+          data-value="${m.matricula}"
+          style="
+            padding:8px;
+            cursor:pointer;">
+          ${m.matricula}
+        </div>
+        `)
+        .join("");
+
+    divSugMatricula.style.display = "block";
+});
 
     divSugMatricula.addEventListener("click", e => {
 

@@ -481,7 +481,7 @@ app.get("/api/tipos/:ubicacion", async (req, res) => {
   let tabla = "";
   
   const result = await pool.query(
-    `SELECT tipo_vehiculo
+    `SELECT DISTINCT tipo_vehiculo
      FROM flota_vehiculos_cgc
      WHERE ubicacion = $1
      ORDER BY tipo_vehiculo`,
