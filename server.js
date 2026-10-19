@@ -224,25 +224,12 @@ app.get('/api/prioridades', async (req, res) => {
     return res.status(401).json({ error: "Sesión caducada" });
   }
 
-  let empresa = req.query.empresa;
+  
   let ubicacion = req.query.ubicacion || "";
 
-  if (!esAdmin(req)) {
-    empresa = req.session.empresa;
-  }
 
-  let tabla_maestra = "";
-  let tabla_registros = "";
-
-  if (empresa === "Global") {
-    tabla_maestra = "global_maquinas";
-    tabla_registros = "registro_de_equipo";
-  } else if (empresa === "Titsa") {
-    tabla_maestra = "titsa_maquinas_provisional";
-    tabla_registros = "registro_titsa";
-  } else {
-    return res.status(400).json({ error: "Empresa no válida" });
-  }
+  let tabla_maestra = "flota_vehiculos_cgc";
+  let tabla_registros = "registros_vehiculos";
 
   try {
     let params = [];
@@ -256,28 +243,20 @@ app.get('/api/prioridades', async (req, res) => {
     const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
     let filtroInventario = "";
 
-    if (empresa === "Titsa") {
-      filtroInventario = `
-        AND m.matricula IN (
-          SELECT id_maquina FROM titsa_maquinas_provisional
-        )
-      `;
-    }
-
     const sql = `
       SELECT
-        m.id_maquina,
+        m.indicativo,
         m.maquina,
         m.ubicacion,
         TO_CHAR(MAX(r.fecha_revision), 'YYYY-MM-DD') AS ultima_revision,
         CURRENT_DATE - MAX(r.fecha_revision) AS dias_desde_revision
       FROM ${tabla_maestra} m
       LEFT JOIN ${tabla_registros} r
-        ON r.id_maquina = m.id_maquina
+        ON r.indicativo = m.indicativo
       ${whereSQL}
       ${filtroInventario}
-      GROUP BY m.id_maquina, m.maquina, m.ubicacion
-      ORDER BY m.id_maquina;
+      GROUP BY m.indicativo, m.maquina, m.ubicacion
+      ORDER BY m.indicativo;
     `;
 
 
@@ -291,11 +270,7 @@ app.get('/api/prioridades', async (req, res) => {
       if (!r.ultima_revision || isNaN(dias)) {
         prioridad = 1;
       } else {
-        if (empresa === "Global") {
-          if (dias >= 90) prioridad = 1;
-          else if (dias >= 45) prioridad = 2;
-        }
-
+      
         if (empresa === "Titsa") {
           if (dias >= 30) prioridad = 1;
           else if (dias >= 15) prioridad = 2;
@@ -303,7 +278,7 @@ app.get('/api/prioridades', async (req, res) => {
       }
 
       return {
-        id_maquina: r.id_maquina,
+        indicativo: r.indicativo,
         maquina: r.maquina,
         ubicacion: r.ubicacion,
         ultima_revision: r.ultima_revision,
@@ -1123,7 +1098,7 @@ app.post("/api/pdfInventario", upload.none(), requireLogin, async (req, res) => 
 
     // Cabecera tabla
   const headers = ["num_orden","tipo_vehiculo","matricula","ubicacion","indicativo","marca","modelo"];
-  const colWidths = [60, 170, 60, 60, 80,80,80];
+  const colWidths = [60, 170, 60, 60, 60,80,80];
 
   let y = 100;
 
@@ -1275,17 +1250,10 @@ app.get("/api/inventario/marcas", async (req, res) => {
 
 //-----------------------------------------------------
 app.get("/api/prioridades/ubicaciones", async (req, res) => {
-  let empresa = req.query.empresa;
-
-  if (!esAdmin(req)) {
-    empresa = req.session.empresa;
-  }
-
-  const tabla = empresa === "Titsa" ? "titsa_maquinas_provisional" : "global_maquinas";
-
+  
   const r = await pool.query(`
     SELECT DISTINCT ubicacion
-    FROM ${tabla}
+    FROM flota_vehiculos_cgc
     WHERE ubicacion IS NOT NULL
     ORDER BY ubicacion
   `);
