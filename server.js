@@ -631,17 +631,13 @@ app.get("/api/informes", requireLogin, async (req, res) => {
 });
 
 
-app.get("/api/informe/:empresa/:id", requireLogin, async (req, res) => {
+app.get("/api/informe/:id", requireLogin, async (req, res) => {
   try {
-    const { empresa, id } = req.params;
-
-    const tabla = empresa === "Titsa"
-      ? "informes_maquinaria_titsa"
-      : "informes_maquinaria_global";
+    const {id} = req.params;
 
     const result = await pool.query(
-      `SELECT informe, id_maquina, fecha, tipo, id
-       FROM ${tabla}
+      `SELECT informe, matricula, fecha, tipo, id
+       FROM informes_vehiculos_cgc
        WHERE id = $1`,
       [id]
     );
@@ -652,7 +648,7 @@ app.get("/api/informe/:empresa/:id", requireLogin, async (req, res) => {
 
     const row = result.rows[0];
 
-    const filename = `Informe_${row.id_maquina}_${row.fecha}_${row.tipo}.pdf`;
+    const filename = `Informe_${row.matricula}_${row.fecha}_${row.tipo}.pdf`;
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
