@@ -1190,6 +1190,7 @@ app.post("/api/pdfInventario", upload.none(), requireLogin, async (req, res) => 
       row.tipo_vehiculo,
       row.matricula,
       row.ubicacion,
+      row.indicativo,
       row.marca,
       row.modelo
     ]);
