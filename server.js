@@ -1328,10 +1328,10 @@ app.post("/api/pdfHistorial", requireLogin, async (req, res) => {
     let where = [];
     let params = [];
 
-    if (!fechaInicio || !fechaFin) {
+  /*  if (!fechaInicio || !fechaFin) {
       return res.status(400).json({ error: "Faltan fechas" });
     }
-
+  */
     if (matricula && matricula.trim() !== "") {
         params.push(matricula.trim());
         where.push(`matricula = $${params.length}`);
@@ -1365,19 +1365,23 @@ app.post("/api/pdfHistorial", requireLogin, async (req, res) => {
     const whereSQL = "WHERE " + where.join(" AND ");
 
 
-    // 🔥 CONSULTA BASE
-    let query = `
-      SELECT numero_orden,tipo_vehiculo,matricula,ubicacion,indicativo,marca,modelo,fecha_revision,observaciones,operario
+    const query = `
+      SELECT
+          numero_orden,
+          tipo_vehiculo,
+          matricula,
+          ubicacion,
+          indicativo,
+          marca,
+          modelo,
+          fecha_revision,
+          observaciones,
+          operario
       FROM registros_vehiculos
       ${whereSQL}
-      ORDER BY fecha_revision DESC
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+      ORDER BY ubicacion, fecha_revision DESC
     `;
 
-    // 🔥 ORDEN NECESARIO PARA DISTINCT ON
-    query += `
-      ORDER BY indicativo, fecha_revision DESC
-    `;
 
     const result = await pool.query(query, params);
     const datos = result.rows;
@@ -1677,9 +1681,6 @@ app.post("/api/pdfHistorial", requireLogin, async (req, res) => {
     }
     y += 20;
     doc.font("Helvetica-Bold").fontSize(14);
-    const maquinasUnicas = new Set(datos.map(r => r.id_maquina));
-    const totalMaquinas = maquinasUnicas.size;
-    doc.text(`Total de máquinas: ${totalMaquinas}`, 30, y);
     y += 20;
     doc.text(`Total de registros: ${datos.length}`, 30, y);
 
