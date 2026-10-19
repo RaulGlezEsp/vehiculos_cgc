@@ -159,10 +159,9 @@ async function cargarInventario(pagina) {
   const marca = document.getElementById("filtroMarca").value;
   const busqueda = document.getElementById("buscador").value.trim();
 
-  const lote = document.getElementById("filtroLote").value;
 
   const res = await fetch(
-    `/api/inventario?page=${pagina}&limit=20&ubicacion=${encodeURIComponent(ubicacion)}&marca=${encodeURIComponent(marca)}&busqueda=${encodeURIComponent(busqueda)}&lote=${encodeURIComponent(lote)}`
+    `/api/inventario?page=${pagina}&limit=20&ubicacion=${encodeURIComponent(ubicacion)}&marca=${encodeURIComponent(marca)}&busqueda=${encodeURIComponent(busqueda)}`
   );
 
 
@@ -241,7 +240,6 @@ async function descargarPDF() {
   const marca = document.getElementById("filtroMarca").value;
   const busqueda = document.getElementById("buscador").value.trim();
 
- // form.append("lote", lote);
 
   const form = new FormData();
   form.append("ubicacion", ubicacion);
