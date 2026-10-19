@@ -366,28 +366,6 @@ app.get("/api/ubicaciones", async (req, res) => {
   res.json(result.rows);
 });
 
-app.get("/api/todasmaquinas/:empresa/:ubicacion", async (req, res) => {
-  const {ubicacion} = req.params;
-    let { empresa } = req.params;
-
-  if (!esAdmin(req)) {
-    empresa = req.session.empresa;
-  }
-  let tabla = "";
-  if (empresa === "Titsa") tabla = "titsa_maquinas";
-  else tabla = "global_maquinas";
-
-  const result = await pool.query(
-    `SELECT id_maquina, maquina
-     FROM ${tabla}
-     WHERE ubicacion = $1
-     ORDER BY maquina`,
-    [ubicacion]
-  );
-
-  res.json(result.rows);
-});
-
 app.get("/api/tipos/:ubicacion", async (req, res) => {
   const {ubicacion} = req.params;
    

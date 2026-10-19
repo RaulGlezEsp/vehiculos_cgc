@@ -72,18 +72,41 @@ Operario: <strong id="operarioLabel"></strong>
 <br><br>
 
 <div class="filtros">
-  <label>Empresa:</label>
-  <select id="empresa">
-    <option value="Titsa">Titsa</option>
-    <option value="Global">Global</option>
-  </select>
+
 
   <label>Ubicación *</label>
   <select id="ubicacion" name="Ubicacion"></select>
 
-  <label>ID Máquina:</label>
-  <!--input type="text" id="id_maquina" placeholder="Ej: 1501"-->
-  <select id="selectorMaquina" name="ID_Maquina" required></select>
+  <label>Tipo vehiculo</label>
+  <select name="tipo_vehiculo" id="tipo_vehiculo"> </select>  
+
+  <label>Matricula</label>
+
+    <div style="position:relative;">
+
+      <input
+          type="text"
+          name="matricula"
+          id="matricula"
+          autocomplete="off"
+          required>
+
+      <div id="sugerenciasMatricula"
+           style="
+           border:1px solid #ccc;
+           border-radius:4px;
+           max-height:150px;
+           overflow-y:auto;
+           display:none;
+           position:absolute;
+           background:white;
+           width:100%;
+           top:100%;
+           left:0;
+           z-index:1000;">
+      </div>
+
+    </div>
 
   <label>Fecha inicio:</label>
   <input type="date" id="fechaInicio">
@@ -113,18 +136,80 @@ fetch("/api/me")
     if (!user || !user.username) location.href="/index.html";
     document.getElementById("operarioLabel").innerText = user.username;
   });
+  document.addEventListener("DOMContentLoaded", () => {   
+    cargarUbicaciones();
+  });
 
+    let listaMatriculas = [];
+
+    async function cargarUbicaciones() {
+        const r = await fetch(`/api/ubicaciones/`);
+        const ubicaciones = await r.json();
+
+        const sel = document.getElementById("ubicacion");
+        sel.innerHTML = "";
+
+        ubicaciones.forEach(u => {
+          const opt = document.createElement("option");
+          opt.value = u.ubicacion;
+          opt.textContent = u.ubicacion;
+          sel.appendChild(opt);
+        });
+
+        // Cargar máquinas de la primera ubicación automáticamente
+        if (ubicaciones.length > 0) {
+          cargarTiposPorUbicacion( ubicaciones[0].ubicacion);
+        }
+      
+    }
+
+    async function cargarTiposPorUbicacion(ubicacion) {
+        const r = await fetch(`/api/tipos/${ubicacion}`);
+        const tipos = await r.json();
+
+        const sel = document.getElementById("tipo_vehiculo");
+        sel.innerHTML = "";
+
+        tipos.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m.tipo_vehiculo;
+          opt.textContent = `${m.tipo_vehiculo}`;
+          //opt.textContent = `${m.matricula} - ${m.tipo_vehiculo}`;
+          sel.appendChild(opt);
+        });
+
+        if (tipos.length > 0) {
+          cargarMatriculasPorTipo( tipos[0].tipo_vehiculo);
+        }  
+    }
+
+    async function cargarMatriculasPorTipo(tipo_vehiculo) {
+
+        const r =
+            await fetch(`/api/matriculas/${tipo_vehiculo}`);
+
+        listaMatriculas =
+            await r.json();
+    }
+
+    document.getElementById("ubicacion").addEventListener("change", () => {
+        const ubicacion = document.getElementById("ubicacion").value;
+        cargarTiposPorUbicacion(ubicacion);
+    });
+
+    document.getElementById("tipo_vehiculo").addEventListener("change", () => {
+        const tipo_vehiculo = document.getElementById("tipo_vehiculo").value;
+        cargarMatriculasPorTipo(tipo_vehiculo);
+    });
 // BUSCAR INFORMES
 async function buscarInformes() {
-  const empresa = document.getElementById("empresa").value;
-  const id_maquina = document.getElementById("selectorMaquina").value.trim();
+  const matricula = document.getElementById("matricula").value.trim();
   const fechaInicio = document.getElementById("fechaInicio").value;
   const fechaFin = document.getElementById("fechaFin").value;
   const tipo = document.getElementById("tipo").value;
 
   const params = new URLSearchParams();
-  params.append("empresa", empresa);
-  if (id_maquina) params.append("id_maquina", id_maquina);
+  if (matricula) params.append("matricula", matricula);
   if (fechaInicio) params.append("fechaInicio", fechaInicio);
   if (fechaFin) params.append("fechaFin", fechaFin);
   if (tipo) params.append("tipo", tipo);
@@ -136,30 +221,29 @@ async function buscarInformes() {
   }
 
   const datos = await res.json();
-  mostrarTabla(datos, empresa);
+  mostrarTabla(datos);
 }
 
 document.getElementById("btnBuscar").addEventListener("click", buscarInformes);
 
 // MOSTRAR TABLA
-function mostrarTabla(datos, empresa) {
+function mostrarTabla(datos) {
   if (datos.length === 0) {
     document.getElementById("resultados").innerHTML = "<p>No hay informes para los filtros seleccionados.</p>";
     return;
   }
 
   let html = "<table><tr>";
-  html += "<th>ID</th><th>ID Máquina</th><th>Empresa</th><th>Fecha</th><th>Tipo</th><th>Descargar</th>";
+  html += "<th>ID</th><th>ID Máquina</th><th>Fecha</th><th>Tipo</th><th>Descargar</th>";
   html += "</tr>";
 
   datos.forEach(row => {
     html += "<tr>";
     html += `<td>${row.id}</td>`;
-    html += `<td>${row.id_maquina}</td>`;
-    html += `<td>${row.empresa}</td>`;
+    html += `<td>${row.matricula}</td>`;
     html += `<td>${row.fecha.slice(0,10)}</td>`;
     html += `<td>${row.tipo}</td>`;
-    html += `<td><button onclick="descargar('${empresa}', ${row.id})">Descargar</button></td>`;
+    html += `<td><button onclick="descargar(${row.id})">Descargar</button></td>`;
     html += "</tr>";
   });
 
@@ -167,64 +251,79 @@ function mostrarTabla(datos, empresa) {
   document.getElementById("resultados").innerHTML = html;
 }
 
-  document.addEventListener("DOMContentLoaded", () => {
-      const empresa = document.getElementById("empresa").value;
-      if (empresa) {
-          //cargarMaquinas(empresa);
-          cargarUbicaciones(empresa);
-      }
-  });
 
-async function cargarUbicaciones(empresa) {
-    const r = await fetch(`/api/ubicaciones/${empresa}`);
-    const ubicaciones = await r.json();
+    const matriculaInput = document.getElementById("matricula");
 
-    const sel = document.getElementById("ubicacion");
-    sel.innerHTML = "";
+    const divSugMatricula = document.getElementById("sugerenciasMatricula");
 
-    ubicaciones.forEach(u => {
-      const opt = document.createElement("option");
-      opt.value = u.ubicacion;
-      opt.textContent = u.ubicacion;
-      sel.appendChild(opt);
-    });
+matriculaInput.addEventListener("input", () => {
 
-    // Cargar máquinas de la primera ubicación automáticamente
-    if (ubicaciones.length > 0) {
-      cargarMaquinasPorUbicacion(empresa, ubicaciones[0].ubicacion);
+    const texto =
+        matriculaInput.value
+            .trim()
+            .toUpperCase();
+
+    if (!texto) {
+        divSugMatricula.style.display = "none";
+        return;
     }
-}
 
-async function cargarMaquinasPorUbicacion(empresa, ubicacion) {
-    const r = await fetch(`/api/todasmaquinas/${empresa}/${ubicacion}`);
-    const maquinas = await r.json();
+    const filtradas =
+      listaMatriculas
+        .filter(m =>
+            m.matricula
+              .toUpperCase()
+              .includes(texto)
+        )
+        .slice(0,20);
 
-    const sel = document.getElementById("selectorMaquina");
-    sel.innerHTML = "";
+    if (filtradas.length === 0) {
 
-    maquinas.forEach(m => {
-      const opt = document.createElement("option");
-      opt.value = m.id_maquina;
-      opt.textContent = `${m.id_maquina} - ${m.maquina}`;
-      sel.appendChild(opt);
+        divSugMatricula.style.display = "none";
+        return;
+    }
+
+    divSugMatricula.innerHTML =
+      filtradas
+        .map(m => `
+        <div
+          class="mat-item"
+          data-value="${m.matricula}"
+          style="
+            padding:8px;
+            cursor:pointer;">
+          ${m.matricula}
+        </div>
+        `)
+        .join("");
+
+    divSugMatricula.style.display = "block";
+});
+
+    divSugMatricula.addEventListener("click", e => {
+
+        if (
+            e.target.classList.contains("mat-item")
+        ) {
+
+            matriculaInput.value =
+                e.target.dataset.value;
+
+            divSugMatricula.style.display =
+                "none";
+
+            matriculaInput.dispatchEvent(
+                new Event("blur")
+            );
+        }
     });
-}
 
-document.getElementById("ubicacion").addEventListener("change", () => {
-    const empresa = document.getElementById("empresa").value;
-    const ubicacion = document.getElementById("ubicacion").value;
-    cargarMaquinasPorUbicacion(empresa, ubicacion);
-});
 
-document.getElementById("empresa").addEventListener("change", function () {
-    const empresa = this.value;
-    //cargarMaquinas(empresa);
-    cargarUbicaciones(empresa);
-});
+
 
 // DESCARGAR INFORME
-function descargar(empresa, id) {
-  window.location.href = `/api/informe/${empresa}/${id}`;
+function descargar(id) {
+  window.location.href = `/api/informe/${id}`;
 }
 </script>
 
