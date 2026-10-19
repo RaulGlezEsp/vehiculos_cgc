@@ -1436,7 +1436,7 @@ app.post("/api/pdfHistorial", requireLogin, async (req, res) => {
     doc.font("Helvetica-Bold").fontSize(18).text("HISTORIAL DE CORRECCIONES", 0, 85, { align: "center" });
 
     doc.font("Helvetica").fontSize(12);
-    doc.text(`Empresa: ${empresa}`, 30, 130);
+    doc.text(`Empresa: Consorcio GC`, 30, 130);
     doc.text(`Rango: ${fechaInicio} - ${fechaFin}`, 30, 150);
 
     let y = 190;
@@ -1519,7 +1519,7 @@ app.post("/api/pdfHistorial", requireLogin, async (req, res) => {
         Email: "administracion@ayudashidraulicas.com"
     };
 
-    function drawHeaderWithFlexible(doc, startY, empresa) {
+    function drawHeaderWithFlexible(doc, startY) {
       let y = startY;
       
 
@@ -1545,7 +1545,7 @@ app.post("/api/pdfHistorial", requireLogin, async (req, res) => {
       return y;
     }
 
-    y = drawHeaderWithFlexible(doc, y, empresa);
+    y = drawHeaderWithFlexible(doc, y);
     y += 20;
 
     // -----------------------------
