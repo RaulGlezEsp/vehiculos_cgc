@@ -583,18 +583,16 @@ async function enviarCorreo(pdfBuffer, filename, operario,maquina,empresa) {
 
 app.get("/api/informes", requireLogin, async (req, res) => {
   try {
-    const { empresa, id_maquina, fechaInicio, fechaFin, tipo } = req.query;
+    const {matricula, fechaInicio, fechaFin, tipo } = req.query;
 
-    const tabla = empresa === "Titsa"
-      ? "informes_maquinaria_titsa"
-      : "informes_maquinaria_global";
+   
 
     let where = [];
     let params = [];
 
-    if (id_maquina) {
-      params.push(id_maquina);
-      where.push(`id_maquina = $${params.length}`);
+    if (matricula) {
+      params.push(matricula);
+      where.push(`matricula = $${params.length}`);
     }
 
     if (fechaInicio) {
@@ -615,8 +613,8 @@ app.get("/api/informes", requireLogin, async (req, res) => {
     const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
     const result = await pool.query(
-      `SELECT id_maquina, empresa, fecha, tipo, id
-       FROM ${tabla}
+      `SELECT matricula, fecha, tipo, id
+       FROM informes_vehiculos_cgc
        ${whereSQL}
        ORDER BY fecha DESC`
       , params
