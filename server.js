@@ -1122,8 +1122,8 @@ app.post("/api/pdfInventario", upload.none(), requireLogin, async (req, res) => 
     doc.moveDown();
 
     // Cabecera tabla
-  const headers = ["numero_orden","tipo_vehiculo","matricula","ubicacion","indicativo","marca","modelo"];
-  const colWidths = [60, 170, 120, 60, 80,80,80];
+  const headers = ["num_orden","tipo_vehiculo","matricula","ubicacion","indicativo","marca","modelo"];
+  const colWidths = [60, 170, 60, 60, 80,80,80];
 
   let y = 100;
 
