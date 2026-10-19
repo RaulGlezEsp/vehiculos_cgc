@@ -269,14 +269,11 @@ app.get('/api/prioridades', async (req, res) => {
 
       if (!r.ultima_revision || isNaN(dias)) {
         prioridad = 1;
-      } else {
-      
-        if (empresa === "Titsa") {
-          if (dias >= 30) prioridad = 1;
-          else if (dias >= 15) prioridad = 2;
-        }
+      } else if (dias >= 30) {
+         prioridad = 1;
+      } else if (dias >= 15) {
+        prioridad = 2;
       }
-
       return {
         indicativo: r.indicativo,
         matricula: r.matricula,
