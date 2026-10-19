@@ -1090,12 +1090,6 @@ app.post("/api/pdfInventario", upload.none(), requireLogin, async (req, res) => 
       where.push(`LOWER(maquina) LIKE $${params.length}`);
     }
 
-    if (empresa === "Titsa" && lote) {
-      params.push(lote);
-      where.push(`lote = $${params.length}`);
-    }
-
-
     const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
     // 3) Consulta EXACTA del inventario
