@@ -415,110 +415,12 @@ app.get("/api/valores/:matricula", async (req, res) => {
   }
 });
 
-app.post("/api/subirInforme", (req, res) => {
-    upload.array("pdfs")(req, res, err => {
-
-        // 1. ERROR DE MULTER (tamaño, número de archivos, etc.)
-        if (err) {
-            console.error("ERROR MULTER:", err);
-
-            return res.status(400).json({
-                ok: false,
-                msg: "Los archivos son demasiado grandes o demasiados.",
-                error: err.message,
-                lista: pdfsTemporales.map(x => x.nombre)
-            });
-        }
-
-        // 2. SI NO HAY ARCHIVOS
-        if (!req.files || req.files.length === 0) {
-            return res.json({
-                ok: true,
-                lista: pdfsTemporales.map(x => x.nombre)
-            });
-        }
-
-        // 3. GUARDAR ARCHIVOS EN MEMORIA
-        for (const f of req.files) {
-            pdfsTemporales.push({
-                nombre: f.originalname,
-                buffer: f.buffer
-            });
-        }
-
-        // 4. RESPUESTA CORRECTA
-        res.json({
-            ok: true,
-            lista: pdfsTemporales.map(x => x.nombre)
-        });
-    });
-});
 
 
 
-
-app.post("/api/enviarInformes", async (req, res) => {
-    const { empresa } = req.body;
-    // Normalizamos para comparar
-    const emp = (empresa || "").toLowerCase();
-
-    if (pdfsTemporales.length === 0) {
-        return res.json({ msg: "No hay PDFs cargados" });
-    }
-
-    let destinatarios = [];
-
-    /*if (emp.toLowerCase().includes("titsa")) {
-        destinatarios = [
-            { Email: "administracion@grupobaezcan.com" },
-            { Email: "gestionbaezcan@gmail.com" },
-            { Email: "grupobaezcan@gmail.com" },
-            { Email: "raulx3000@gmail.com" },
-            { Email: "informes@grupobaezcan.com" }
-        ];
-    }
-*/
-
-   // if (emp.toLowerCase().includes("global")) {
-        destinatarios = [
-            { Email: "informes@grupobaezcan.com" }
-        ];
-   // }
-
-    const attachments = pdfsTemporales.map(p => ({
-        ContentType: "application/pdf",
-        Filename: p.nombre,
-        Base64Content: p.buffer.toString("base64")
-    }));
-
-    await mailjet
-        .post("send", { version: "v3.1" })
-        .request({
-            Messages: [
-                {
-                    From: {
-                        Email: "informes@grupobaezcan.com",
-                        Name: "Grupo Baezcan"
-                    },
-                    To: destinatarios,
-                    Subject: `Informes del día - ${req.session.username}`,
-                    HTMLPart: `<p>Adjunto informes del día.</p>`,
-                    Attachments: attachments
-                }
-            ]
-        });
-
-    pdfsTemporales = []; // limpiar
-
-    res.json({ msg: "Informes enviados correctamente" });
-});
-
-
-
-async function enviarCorreo(pdfBuffer, filename, operario,maquina,empresa) {
+async function enviarCorreo(pdfBuffer, filename, operario,matricula) {
   try {
-    // Normalizamos para comparar
-    const emp = (empresa || "").toLowerCase();
+ 
     
     // Correos por defecto (Baezcan)
     let destinatarios = [
@@ -527,26 +429,7 @@ async function enviarCorreo(pdfBuffer, filename, operario,maquina,empresa) {
         { Email: "informes@grupobaezcan.com" }
     ];
 
-    // Si la empresa es TITSA
-/*if (emp.includes("titsa")) {
-      destinatarios = [
-        { Email: "raulglezespino@gmail.com" },
-        { Email: "administracion@grupobaezcan.com" },
-      { Email: "gestionbaezcan@gmail.com" },
-      { Email: "grupobaezcan@gmail.com" },
-      { Email: "informes@grupobaezcan.com" }
-      ];
-   }
-*/
-    // Si la empresa es GLOBAL
-    if (emp.includes("global")) {
-      destinatarios = [
-        { Email: "ogonzalez@guaguasglobal.com" },
-        { Email: "administracion@grupobaezcan.com" },
-        { Email: "gestionbaezcan@gmail.com" },
-        { Email: "informes@grupobaezcan.com" }
-      ];
-    }
+
 
     await mailjet
       .post("send", { version: "v3.1" })
@@ -561,7 +444,7 @@ async function enviarCorreo(pdfBuffer, filename, operario,maquina,empresa) {
             Subject: `Informe diario - ${operario}`,
             HTMLPart: `
               <p>Hola,</p>
-              <p>Adjunto el informe de maquinaria <strong>${maquina}</strong> del operario <strong>${operario}</strong>.</p>
+              <p>Adjunto el informe de matricula <strong>${matricula}</strong> del operario <strong>${operario}</strong>.</p>
               <p>Saludos,<br>Grupo Baezcan</p>
             `,
             Attachments: [
@@ -971,7 +854,7 @@ app.post("/api/pdf", requireLogin, upload.array("Adjuntos", 10), async (req, res
     const finalPdf = await pdfDoc.save();
 
     // 8) ENVIAR POR CORREO
-    await enviarCorreo(finalPdf, filename, operario, data.Maquina, data.Empresa);
+    await enviarCorreo(finalPdf, filename, operario, data.matricula);
 
     // ===============================
     //  GUARDAR INFORME EN BASE DE DATOS
