@@ -118,25 +118,14 @@ Operario: <strong id="operarioLabel"></strong>
 <div id="paginacion"></div>
 
   <script>
-    // Cargar usuario y bloquear empresa si no es admin
 fetch("/api/me")
   .then(r => r.json())
   .then(user => {
     document.getElementById("operarioLabel").innerText = user.username;
 
-
-
     cargarFiltros();
     cargarInventario(1);
 
-    selEmpresa.addEventListener("change", () => {
-      
-
-      
-
-      cargarFiltros();
-      cargarInventario(1);
-    });
   });
 
 
@@ -173,7 +162,7 @@ async function cargarInventario(pagina) {
   const lote = document.getElementById("filtroLote").value;
 
   const res = await fetch(
-    `/api/inventario?empresa=${empresa}&page=${pagina}&limit=20&ubicacion=${encodeURIComponent(ubicacion)}&marca=${encodeURIComponent(marca)}&busqueda=${encodeURIComponent(busqueda)}&lote=${encodeURIComponent(lote)}`
+    `/api/inventario?page=${pagina}&limit=20&ubicacion=${encodeURIComponent(ubicacion)}&marca=${encodeURIComponent(marca)}&busqueda=${encodeURIComponent(busqueda)}&lote=${encodeURIComponent(lote)}`
   );
 
 
@@ -187,12 +176,11 @@ async function cargarInventario(pagina) {
   }
 
   mostrarTabla(json.datos);
-  mostrarPaginacion(json.total, json.page, json.limit, empresa);
+  mostrarPaginacion(json.total, json.page, json.limit);
 }
 
 document.getElementById("buscador").addEventListener("input", () => {
-  const empresa = document.getElementById("empresa").value;
-  cargarInventario(empresa, 1);
+  cargarInventario(1);
 });
 
 
@@ -270,7 +258,6 @@ async function descargarPDF() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
 
-  //const empresa = document.getElementById("empresa").value;
   const fecha = new Date().toISOString().slice(0,10); // YYYY-MM-DD
 
   a.href = url;
