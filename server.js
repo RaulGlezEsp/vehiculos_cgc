@@ -1241,7 +1241,7 @@ app.get("/api/inventario", async (req, res) => {
   const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
   const total = await pool.query(
-    `SELECT COUNT(*) FROM flota_vehiculos_cgca} ${whereSQL}`,
+    `SELECT COUNT(*) FROM flota_vehiculos_cgc ${whereSQL}`,
     params
   );
 
