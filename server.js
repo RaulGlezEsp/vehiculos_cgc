@@ -141,9 +141,6 @@ app.get("/historial", async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
-
-    if (!esAdmin(req)) empresa = req.session.empresa;
-
   
     let where = [];
     let params = [];
@@ -175,7 +172,7 @@ app.get("/historial", async (req, res) => {
     }
 
     if (where.length === 0) {
-        return res.status(400).json({ error: "Debe indicar máquina, fecha o ubicación" });
+        return res.status(400).json({ error: "Debe indicar vehiculo, fecha o ubicación" });
     }
 
     const whereSQL = "WHERE " + where.join(" AND ");
@@ -1326,59 +1323,60 @@ app.get("/api/prioridades/ubicaciones", async (req, res) => {
 
 app.post("/api/pdfHistorial", requireLogin, async (req, res) => {
   try {
-    const { empresa, fechaInicio, fechaFin, ubicacion, lote, id_maquina } = req.body;
+    const { matricula,tipo_vehiculo, fechaInicio, fechaFin, ubicacion} = req.body;
+
+    let where = [];
+    let params = [];
 
     if (!fechaInicio || !fechaFin) {
       return res.status(400).json({ error: "Faltan fechas" });
     }
 
-    let tabla = "";
-    if (empresa === "Global") tabla = "registro_de_equipo";
-    else if (empresa === "Titsa") tabla = "registro_titsa";
-    else return res.status(400).json({ error: "Empresa no válida" });
-
-    let filtroOficiales = "";
-    if (empresa === "Titsa") {
-      filtroOficiales = `
-        AND id_maquina IN (
-          SELECT id_maquina FROM titsa_maquinas_provisional
-        )
-      `;
+    if (matricula && matricula.trim() !== "") {
+        params.push(matricula.trim());
+        where.push(`matricula = $${params.length}`);
     }
+    if (tipo_vehiculo && tipo_vehiculo.trim() !== "") {
+        params.push(tipo_vehiculo.trim());
+        where.push(`tipo_vehiculo = $${params.length}`);
+    }    
+
+    if (ubicacion && ubicacion.trim() !== "") {
+        params.push(ubicacion.trim());
+        where.push(`ubicacion = $${params.length}`);
+    }
+
+    if (fechaInicio && fechaFin) {
+        params.push(fechaInicio);
+        params.push(fechaFin);
+        where.push(`fecha_revision::date BETWEEN $${params.length - 1} AND $${params.length}`);
+    } else if (fechaInicio) {
+        params.push(fechaInicio);
+        where.push(`fecha_revision::date >= $${params.length}`);
+    } else if (fechaFin) {
+        params.push(fechaFin);
+        where.push(`fecha_revision::date <= $${params.length}`);
+    }
+
+    if (where.length === 0) {
+        return res.status(400).json({ error: "Debe indicar vehiculo, fecha o ubicación" });
+    }
+
+    const whereSQL = "WHERE " + where.join(" AND ");
+
 
     // 🔥 CONSULTA BASE
     let query = `
-      SELECT
-        id_maquina, maquina, ubicacion, fecha_revision, observaciones, operario
-        ${empresa === "Titsa" ? ", lote" : ""}
-      FROM ${tabla}
-      WHERE fecha_revision::date BETWEEN $1 AND $2
-      ${filtroOficiales}
+      SELECT numero_orden,tipo_vehiculo,matricula,ubicacion,indicativo,marca,modelo,fecha_revision,observaciones,operario
+      FROM registros_vehiculos
+      ${whereSQL}
+      ORDER BY fecha_revision DESC
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
-
-    let params = [fechaInicio, fechaFin];
-
-    // 🔥 FILTRO POR MÁQUINA (NUEVO)
-    if (id_maquina && id_maquina.trim() !== "") {
-      query += ` AND id_maquina = $${params.length + 1}`;
-      params.push(id_maquina.trim());
-    }
-
-    // FILTRO POR LOTE (solo Titsa)
-    if (empresa === "Titsa" && lote && lote.trim() !== "") {
-      query += ` AND lote = $${params.length + 1}`;
-      params.push(lote.trim());
-    }
-
-    // FILTRO POR UBICACIÓN
-    if (ubicacion && ubicacion.trim() !== "") {
-      query += ` AND ubicacion = $${params.length + 1}`;
-      params.push(ubicacion.trim());
-    }
 
     // 🔥 ORDEN NECESARIO PARA DISTINCT ON
     query += `
-      ORDER BY id_maquina, fecha_revision DESC
+      ORDER BY indicativo, fecha_revision DESC
     `;
 
     const result = await pool.query(query, params);
@@ -1406,7 +1404,7 @@ app.post("/api/pdfHistorial", requireLogin, async (req, res) => {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="Historial_${empresa}_${fechaInicio}_a_${fechaFin}.pdf"`
+        `attachment; filename="Historial_Vehiculos_${fechaInicio}_a_${fechaFin}.pdf"`
       );
       res.send(pdfBuffer);
     });
@@ -1507,8 +1505,7 @@ app.post("/api/pdfHistorial", requireLogin, async (req, res) => {
     // -----------------------------
     // CABECERA FLEXIBLE
     // -----------------------------
-    const empresasConfig = {
-      Global: {
+    const cfg = {
         Direccion: "c/. Viera y Clavijo 34-36/5ºPlanta",
         Provincia: "Las Palmas",
         CPostal: "35002",
@@ -1516,28 +1513,17 @@ app.post("/api/pdfHistorial", requireLogin, async (req, res) => {
         CIF: "B-35604487",
         Telefono1: "928367301",
         Email: "administracion@ayudashidraulicas.com"
-      },
-      Titsa: {
-        Direccion: "c/.Punta de Anaga, 1",
-        Provincia: "Santa Cruz de Tenerife",
-        CPostal: "38111",
-        Ciudad: "Santa María del Mar",
-        CIF: "A-28502144",
-        Telefono1: "",
-        Email: "administracion@ayudashidraulicas.com",
-        Codigo:"T-SER 70.19/092025" 
-      }
     };
 
     function drawHeaderWithFlexible(doc, startY, empresa) {
       let y = startY;
-      let cfg = empresasConfig[empresa];
+      
 
       const runRow = cols => {
         y = addFlexibleRow(doc, y, cols);
       };
 
-      runRow([{ label: "EMPRESA", value: empresa }]);
+      runRow([{ label: "EMPRESA", value: "consorcio GC" }]);
       runRow([
         { label: "Dirección", value: cfg.Direccion, span: 8 },
         { label: "Provincia", value: cfg.Provincia, span: 4 }
@@ -1551,10 +1537,7 @@ app.post("/api/pdfHistorial", requireLogin, async (req, res) => {
         { label: "Teléfono 1", value: cfg.Telefono1, span: 4 },
         { label: "e-mail", value: cfg.Email, span: 8 }
       ]);
-      if (empresa === "Titsa") {
-        runRow([{ label: "Codigo", value: cfg.Codigo }]);
-      }
-
+    
       return y;
     }
 
@@ -1620,26 +1603,16 @@ app.post("/api/pdfHistorial", requireLogin, async (req, res) => {
     // -----------------------------
     // COLUMNAS
     // -----------------------------
-    const columnasGlobal = [
-      { key: "id_maquina", width: 70 },
-      { key: "maquina", width: 100 },
+    const columnas = [
+      { key: "numero_orden", width: 70 },
+      { key: "tipo_vehiculo", width: 100 },
+      { key: "matricula", width: 70 },
+      { key: "indicativo", width: 70 },
       { key: "ubicacion", width: 80 },
       { key: "fecha_revision", width: 100 },
       { key: "observaciones", width: 120 },
       { key: "operario", width: 70 }
     ];
-
-    const columnasTitsa = [
-      { key: "id_maquina", width: 70 },
-      { key: "maquina", width: 100 },
-      { key: "ubicacion", width: 80 },
-      { key: "fecha_revision", width: 100 },
-      { key: "observaciones", width: 120 },
-      { key: "operario", width: 70 },
-      { key: "lote", width: 60 }
-    ];
-
-    const columnas = empresa === "Titsa" ? columnasTitsa : columnasGlobal;
 
     // -----------------------------
     // RECORRER UBICACIONES
