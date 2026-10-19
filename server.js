@@ -1066,13 +1066,10 @@ app.post("/api/pdf", requireLogin, upload.array("Adjuntos", 10), async (req, res
 
 app.post("/api/pdfInventario", upload.none(), requireLogin, async (req, res) => {
   try {
-    const { empresa, ubicacion, marca, busqueda, lote } = req.body;
+    const {busqueda,ubicacion,marca} = req.body;
 
 
-    // 1) Selección de tabla REAL
-    const tabla = empresa === "Titsa"
-      ? "titsa_maquinas_provisional"
-      : "global_maquinas";
+    
 
     // 2) Construcción dinámica del WHERE
     let where = [];
@@ -1103,10 +1100,10 @@ app.post("/api/pdfInventario", upload.none(), requireLogin, async (req, res) => 
 
     // 3) Consulta EXACTA del inventario
     const sql = `
-      SELECT id_maquina, maquina, ubicacion, marca, modelo,num_serie
-      FROM ${tabla}
+      SELECT numero_orden,tipo_vehiculo,matricula,ubicacion,indicativo,marca,modelo
+      FROM flota_vehiculos_cgc
       ${whereSQL}
-      ORDER BY id_maquina
+      ORDER BY indicativo
     `;
 
     const r = await pool.query(sql, params);
@@ -1131,7 +1128,7 @@ app.post("/api/pdfInventario", upload.none(), requireLogin, async (req, res) => 
     doc.moveDown();
 
     // Cabecera tabla
-  const headers = ["ID", "Máquina", "Ubicación", "Marca", "Modelo","Num_serie"];
+  const headers = ["numero_orden","tipo_vehiculo","matricula","ubicacion","indicativo","marca","modelo"];
   const colWidths = [60, 170, 120, 60, 80,140];
 
   let y = 100;
@@ -1187,7 +1184,7 @@ app.post("/api/pdfInventario", upload.none(), requireLogin, async (req, res) => 
 
   // título
   doc.font("Helvetica-Bold").fontSize(18);
-  doc.text("Inventario de maquinaria", { align: "center" });
+  doc.text("Inventario de vehiculos", { align: "center" });
   doc.moveDown();
 
   y = 100;
@@ -1195,12 +1192,12 @@ app.post("/api/pdfInventario", upload.none(), requireLogin, async (req, res) => 
 
   datos.forEach(row => {
     drawRow([
-      row.id_maquina,
-      row.maquina,
+      row.numero_orden,
+      row.tipo_vehiculo,
+      row.matricula,
       row.ubicacion,
       row.marca,
-      row.modelo,
-      row.num_serie
+      row.modelo
     ]);
   });
 
@@ -1215,25 +1212,16 @@ app.post("/api/pdfInventario", upload.none(), requireLogin, async (req, res) => 
 
 
 app.get("/api/inventario", async (req, res) => {
-  const empresa = req.query.empresa;
   const ubicacion = req.query.ubicacion || "";
   const marca = req.query.marca || "";
   const busqueda = req.query.busqueda || "";
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 20;
   const offset = (page - 1) * limit;
-  const lote = req.query.lote || "";
-
-
-  const tabla = empresa === "Titsa" ? "titsa_maquinas_provisional" : "global_maquinas";
-
-  
-
 
   let where = [];
   let params = [];
   
-
   if (ubicacion) {
     params.push(ubicacion);
     where.push(`ubicacion = $${params.length}`);
@@ -1246,13 +1234,9 @@ app.get("/api/inventario", async (req, res) => {
 
   if (busqueda) {
     params.push(`%${busqueda.toLowerCase()}%`);
-    where.push(`LOWER(maquina) LIKE $${params.length}`);
+    where.push(`LOWER(matricula) LIKE $${params.length}`);
   }
 
-  if (empresa === "Titsa" && lote) {
-    params.push(lote);
-    where.push(`lote = $${params.length}`);
-  }
 
   const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
@@ -1262,8 +1246,8 @@ app.get("/api/inventario", async (req, res) => {
   );
 
   const rows = await pool.query(
-    `SELECT id_maquina, maquina, ubicacion, marca, modelo
-     FROM ${tabla}
+    `SELECT numero_orden,tipo_vehiculo,matricula,ubicacion,indicativo,marca,modelo
+     FROM flota_vehiculos_cgc
      ${whereSQL}
      ORDER BY id_maquina
      LIMIT ${limit} OFFSET ${offset}`,
@@ -1281,18 +1265,14 @@ app.get("/api/inventario", async (req, res) => {
 
 
 app.get("/api/inventario/ubicaciones", async (req, res) => {
-  const empresa = req.query.empresa;
-  const tabla = empresa === "Titsa" ? "titsa_maquinas_provisional" : "global_maquinas";
 
-  const r = await pool.query(`SELECT DISTINCT ubicacion FROM ${tabla} ORDER BY ubicacion`);
+  const r = await pool.query(`SELECT DISTINCT ubicacion FROM flota_vehiculos_cgc ORDER BY ubicacion`);
   res.json(r.rows);
 });
 
 app.get("/api/inventario/marcas", async (req, res) => {
-  const empresa = req.query.empresa;
-  const tabla = empresa === "Titsa" ? "titsa_maquinas_provisional" : "global_maquinas";
 
-  const r = await pool.query(`SELECT DISTINCT marca FROM ${tabla} WHERE marca IS NOT NULL ORDER BY marca`);
+  const r = await pool.query(`SELECT DISTINCT marca FROM flota_vehiculos_cgc WHERE marca IS NOT NULL ORDER BY marca`);
   res.json(r.rows);
 });
 //--------------------------------------------------

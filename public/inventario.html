@@ -89,15 +89,11 @@ Operario: <strong id="operarioLabel"></strong>
 
 <br><br>
 
-<label>Empresa</label>
-<select id="empresa">
-  <option value="Global">Global</option>
-  <option value="Titsa">Titsa</option>
-</select>
+
 <input 
   type="text" 
   id="buscador" 
-  placeholder="Buscar máquina..."
+  placeholder="Buscar matricula..."
   style="padding: 8px; width: 250px; margin-left: 10px;"
 ></input>
 
@@ -110,13 +106,6 @@ Operario: <strong id="operarioLabel"></strong>
   <label>Marca</label>
   <select id="filtroMarca">
     <option value="">Todas</option>
-  </select>
-
-  <label id="labelLote" style="display:none;">Lote</label>
-  <select id="filtroLote" style="display:none;">
-    <option value="">Todos</option>
-    <option value="3">Lote 3</option>
-    <option value="4">Lote 4</option>
   </select>
 
 
@@ -135,47 +124,25 @@ fetch("/api/me")
   .then(user => {
     document.getElementById("operarioLabel").innerText = user.username;
 
-    const selEmpresa = document.getElementById("empresa");
 
-    if (user.rol !== "admin") {
-      selEmpresa.value = user.empresa;
-      selEmpresa.disabled = true;
-    }
 
-    // 👇 AQUI: mostrar/ocultar lote al cargar
-    if (selEmpresa.value === "Titsa") {
-      document.getElementById("labelLote").style.display = "block";
-      document.getElementById("filtroLote").style.display = "block";
-    } else {
-      document.getElementById("labelLote").style.display = "none";
-      document.getElementById("filtroLote").style.display = "none";
-      document.getElementById("filtroLote").value = "";
-    }
-
-    cargarFiltros(selEmpresa.value);
-    cargarInventario(selEmpresa.value, 1);
+    cargarFiltros();
+    cargarInventario(1);
 
     selEmpresa.addEventListener("change", () => {
-      const empresa = selEmpresa.value;
+      
 
-      if (empresa === "Titsa") {
-        document.getElementById("labelLote").style.display = "block";
-        document.getElementById("filtroLote").style.display = "block";
-      } else {
-        document.getElementById("labelLote").style.display = "none";
-        document.getElementById("filtroLote").style.display = "none";
-        document.getElementById("filtroLote").value = "";
-      }
+      
 
-      cargarFiltros(empresa);
-      cargarInventario(empresa, 1);
+      cargarFiltros();
+      cargarInventario(1);
     });
   });
 
 
-async function cargarFiltros(empresa) {
+async function cargarFiltros() {
   // Ubicaciones
-  const r1 = await fetch(`/api/inventario/ubicaciones?empresa=${empresa}`);
+  const r1 = await fetch(`/api/inventario/ubicaciones`);
   const ubicaciones = await r1.json();
 
   const selU = document.getElementById("filtroUbicacion");
@@ -185,7 +152,7 @@ async function cargarFiltros(empresa) {
   });
 
   // Marcas
-  const r2 = await fetch(`/api/inventario/marcas?empresa=${empresa}`);
+  const r2 = await fetch(`/api/inventario/marcas`);
   const marcas = await r2.json();
 
   const selM = document.getElementById("filtroMarca");
@@ -198,7 +165,7 @@ async function cargarFiltros(empresa) {
 
 
 
-async function cargarInventario(empresa, pagina) {
+async function cargarInventario(pagina) {
   const ubicacion = document.getElementById("filtroUbicacion").value;
   const marca = document.getElementById("filtroMarca").value;
   const busqueda = document.getElementById("buscador").value.trim();
@@ -239,18 +206,19 @@ function mostrarTabla(datos) {
   }
 
   let html = "<table><tr>";
-  html += "<th>ID</th><th>Máquina</th><th>Ubicación</th><th>Marca</th><th>Modelo</th><th>Num. Serie</th>";
+  html += "<th>ID</th><th>Numero_orden</th><th>tipo_vehiculo</th><th>matricula</th><th>ubicacion</th><th>indicativo</th><th>Marca</th><th>Modelo</th>";
   html += "</tr>";
 
   datos.forEach(row => {
     html += `
       <tr>
-        <td>${row.id_maquina}</td>
-        <td>${row.maquina}</td>
-        <td>${row.ubicacion}</td>
+        <td>${row.numero_orden}</td>
+        <td>${row.tipo_vehiculo}</td>
+        <td>${row.matricula}</td>
+        <td>${row.ubicacion || ""}</td>
+        <td>${row.indicativo || ""}</td>
         <td>${row.marca || ""}</td>
         <td>${row.modelo || ""}</td>
-        <td>${row.num_serie || ""}</td>
       </tr>
     `;
   });
@@ -259,20 +227,20 @@ function mostrarTabla(datos) {
   cont.innerHTML = html;
 }
 
-function mostrarPaginacion(total, page, limit, empresa) {
+function mostrarPaginacion(total, page, limit) {
   const totalPaginas = Math.ceil(total / limit);
   const cont = document.getElementById("paginacion");
 
   let html = "<div class='paginacion'>";
 
   if (page > 1) {
-    html += `<button onclick="cargarInventario('${empresa}', ${page - 1})">Anterior</button>`;
+    html += `<button onclick="cargarInventario(${page - 1})">Anterior</button>`;
   }
 
   html += `<span>Página ${page} de ${totalPaginas}</span>`;
 
   if (page < totalPaginas) {
-    html += `<button onclick="cargarInventario('${empresa}', ${page + 1})">Siguiente</button>`;
+    html += `<button onclick="cargarInventario(${page + 1})">Siguiente</button>`;
   }
 
   html += "</div>";
@@ -281,20 +249,16 @@ function mostrarPaginacion(total, page, limit, empresa) {
 }
 
 async function descargarPDF() {
-  const empresa = document.getElementById("empresa").value;
   const ubicacion = document.getElementById("filtroUbicacion").value;
   const marca = document.getElementById("filtroMarca").value;
   const busqueda = document.getElementById("buscador").value.trim();
-  const lote = document.getElementById("filtroLote").value;
 
  // form.append("lote", lote);
 
   const form = new FormData();
-  form.append("empresa", empresa);
   form.append("ubicacion", ubicacion);
   form.append("marca", marca);
   form.append("busqueda", busqueda);
-  form.append("lote", lote);
 
 
   const res = await fetch("/api/pdfInventario", {
@@ -310,40 +274,17 @@ async function descargarPDF() {
   const fecha = new Date().toISOString().slice(0,10); // YYYY-MM-DD
 
   a.href = url;
-  a.download = `Inventario_${empresa}_${fecha}.pdf`;
+  a.download = `Inventario_Vehiculos_${fecha}.pdf`;
   a.click();
 }
 
 
 document.getElementById("filtroUbicacion").addEventListener("change", () => {
-  const empresa = document.getElementById("empresa").value;
-  cargarInventario(empresa, 1);
+  cargarInventario(1);
 });
 
 document.getElementById("filtroMarca").addEventListener("change", () => {
-  const empresa = document.getElementById("empresa").value;
-  cargarInventario(empresa, 1);
-});
-
-document.getElementById("empresa").addEventListener("change", () => {
-  const empresa = document.getElementById("empresa").value;
-
-  if (empresa === "Titsa") {
-    document.getElementById("labelLote").style.display = "block";
-    document.getElementById("filtroLote").style.display = "block";
-  } else {
-    document.getElementById("labelLote").style.display = "none";
-    document.getElementById("filtroLote").style.display = "none";
-    document.getElementById("filtroLote").value = "";
-  }
-
-  cargarFiltros(empresa);
-  cargarInventario(empresa, 1);
-});
-
-document.getElementById("filtroLote").addEventListener("change", () => {
-  const empresa = document.getElementById("empresa").value;
-  cargarInventario(empresa, 1);
+  cargarInventario(1);
 });
 
 
