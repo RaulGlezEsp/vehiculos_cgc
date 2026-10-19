@@ -246,7 +246,7 @@ app.get('/api/prioridades', async (req, res) => {
     const sql = `
       SELECT
         m.indicativo,
-        m.maquina,
+        m.matricula,
         m.ubicacion,
         TO_CHAR(MAX(r.fecha_revision), 'YYYY-MM-DD') AS ultima_revision,
         CURRENT_DATE - MAX(r.fecha_revision) AS dias_desde_revision
@@ -255,7 +255,7 @@ app.get('/api/prioridades', async (req, res) => {
         ON r.indicativo = m.indicativo
       ${whereSQL}
       ${filtroInventario}
-      GROUP BY m.indicativo, m.maquina, m.ubicacion
+      GROUP BY m.indicativo, m.matricula, m.ubicacion
       ORDER BY m.indicativo;
     `;
 
@@ -279,7 +279,7 @@ app.get('/api/prioridades', async (req, res) => {
 
       return {
         indicativo: r.indicativo,
-        maquina: r.maquina,
+        matricula: r.matricula,
         ubicacion: r.ubicacion,
         ultima_revision: r.ultima_revision,
         prioridad
