@@ -1241,7 +1241,7 @@ app.get("/api/inventario", async (req, res) => {
   const whereSQL = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
   const total = await pool.query(
-    `SELECT COUNT(*) FROM ${tabla} ${whereSQL}`,
+    `SELECT COUNT(*) FROM flota_vehiculos_cgca} ${whereSQL}`,
     params
   );
 
@@ -1249,7 +1249,7 @@ app.get("/api/inventario", async (req, res) => {
     `SELECT numero_orden,tipo_vehiculo,matricula,ubicacion,indicativo,marca,modelo
      FROM flota_vehiculos_cgc
      ${whereSQL}
-     ORDER BY id_maquina
+     ORDER BY indicativo
      LIMIT ${limit} OFFSET ${offset}`,
     params
   );
